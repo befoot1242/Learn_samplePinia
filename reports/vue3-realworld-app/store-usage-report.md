@@ -11,7 +11,7 @@
 | Pinia ストア | 1 |
 | ストア使用ファイル | 11 |
 | 画面（ストアを利用するルート） | 6 |
-| CSV 操作・ストア組み合わせ | 15 |
+| 画面別ストアアクセス明細 | 15 |
 | 違反候補 | 2（ストア外からの直接更新） |
 
 `vue` 3.3.4、`pinia` 2.1.6、`vue-router` 4.2.4。ストアは Setup Store。永続化プラグインは依存にない。JWT は `localStorage` に保存されるが、`userInfo` はメモリ上の state。
@@ -28,25 +28,72 @@
 
 ## 3. 画面別・操作単位の一覧
 
-CSV は「画面・操作・ストア・アクセス種別」の組み合わせを 1 行としている。同じ画面内で同じイベントから生じる複数の表示参照は、対象をまとめている。
+CSV は1行を1ストアアクセスとして記録する。同一画面・操作でも利用ストアごとに行を分け、画面別にまとめた。
 
-| 操作 | トリガー | ハンドラ / 経路 | ストア | R/W | 対象 | 場所 | 確度 | 違反候補 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 初回遷移・ログイン状態確認 | 画面遷移 | `router.beforeEach` | user | R | `isLoggedIn` | `src/router/permissions.ts:5,9` | 確定 | - |
-| トークンからユーザー情報復元 | 画面遷移 | `router.beforeEach` → `getUserInfo` | user | W | `getUserInfo`, `userInfo` | `src/router/permissions.ts:14` → `src/stores/useUserStore.ts:18-21` | 確定 | - |
-| ログイン送信 | submit | `AuthPage` → `handleAuthAction` | user | W | `handleAuthAction`, `userInfo` | `src/components/AuthPage.vue:12,19` → `src/stores/useUserStore.ts:13-16` | 確定 | - |
-| 新規登録送信 | submit | `AuthPage` → `handleAuthAction` | user | W | `handleAuthAction`, `userInfo` | `src/components/AuthPage.vue:12,19` → `src/stores/useUserStore.ts:13-16` | 確定 | - |
-| 共通ナビゲーション表示 | 描画 | `TheHeader` | user | R | `isLoggedIn`, `userInfo` | `src/layouts/components/TheHeader.vue:4-5,35-38` | 確定 | - |
-| フィード表示・切替 | 描画 / 入力変更 | `index.vue` | user | R | `userInfo`, `isLoggedIn` | `src/pages/index/index.vue:6-16,45` | 確定 | - |
-| 記事表示・コメント導線 | 描画 | 記事ページ | user | R | `userInfo`, `isLoggedIn` | `src/pages/article/[[id]].vue:10,29,124` | 確定 | - |
-| プロフィール表示 | 描画 | プロフィールページ | user | R | `userInfo` | `src/pages/profile/[[id]].vue:7,16,45-46` | 確定 | - |
-| 設定画面の初期値設定 | mounted | `onMounted` | user | R | `userInfo` | `src/pages/settings/index.vue:32-34` | 確定 | - |
-| プロフィール設定保存 | submit | `onSubmit` → API → 直接代入 | user | W | `userInfo` | `src/pages/settings/index.vue:19` | 確定 | ストア外から直接更新 |
-| ログアウト | click | `onLogout` → 直接代入 | user | W | `userInfo` | `src/pages/settings/index.vue:25-29` | 確定 | ストア外から直接更新 |
-| 記事カードのお気に入り | click | `onFavorited` | user | R | `isLoggedIn` | `src/components/ArticlePreview.vue:11,14,45` | 確定 | - |
-| 記事のお気に入り | click | `onFavorited` | user | R | `isLoggedIn` | `src/components/FavoriteButton.vue:10,16,34` | 確定 | - |
-| 著者フォロー | click | `onFollow` | user | R | `isLoggedIn` | `src/components/FollowButton.vue:9,14,32` | 確定 | - |
-| コメント表示・投稿者判定 | 描画 / submit | `isAuthor` / `onSubmit` | user | R | `userInfo` | `src/pages/article/components/CommentList.vue:11,15,55` | 確定 | - |
+### Route guard (`all protected routes; token restoration`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Check login state | navigation | router.beforeEach | user | R | isLoggedIn | read | src/router/permissions.ts:5,9 | 確定 | - |
+| Fetch current user | navigation | router.beforeEach | user | W | getUserInfo; userInfo | action | src/router/permissions.ts:14 -> src/stores/useUserStore.ts:18-21 | 確定 | - |
+
+### Login (`/login`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Submit credentials | submit | AuthPage onSubmit | user | W | handleAuthAction; userInfo | action | src/components/AuthPage.vue:12,19 -> src/stores/useUserStore.ts:13-16 | 確定 | - |
+
+### Register (`/register`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Submit registration | submit | AuthPage onSubmit | user | W | handleAuthAction; userInfo | action | src/components/AuthPage.vue:12,19 -> src/stores/useUserStore.ts:13-16 | 確定 | - |
+
+### Shared header (`all routes`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Render auth links and user identity | render | navList computed | user | R | isLoggedIn; userInfo | storeToRefs + property read | src/layouts/components/TheHeader.vue:4-5,35-38 | 確定 | - |
+
+### Home feed (`/`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Choose personalized feed | render | setup and template | user | R | userInfo; isLoggedIn | property read | src/pages/index/index.vue:6-16,45 | 確定 | - |
+
+### Article detail (`/article/:id`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Determine article owner and comment prompt | render | isAuthor / template | user | R | userInfo; isLoggedIn | property read | src/pages/article/[[id]].vue:10,29,124 | 確定 | - |
+| Favorite article | click | onFavorited | user | R | isLoggedIn | property read | src/components/FavoriteButton.vue:10,16,34 | 確定 | - |
+| Show commenter identity and authorize comment controls | render | isAuthor / template | user | R | userInfo | property read | src/pages/article/components/CommentList.vue:11,15,55 | 確定 | - |
+
+### Profile (`/profile/:id`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Determine whether profile is current user | render | isSelf | user | R | userInfo | property read | src/pages/profile/[[id]].vue:7,16,45-46 | 確定 | - |
+
+### Settings (`/settings`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Initialize edit form | mounted | onMounted | user | R | userInfo | property read | src/pages/settings/index.vue:32-34 | 確定 | - |
+| Save profile | submit | onSubmit | user | W | userInfo | direct assignment | src/pages/settings/index.vue:19 | 確定 | 直接更新 |
+| Log out | click | onLogout | user | W | userInfo | direct assignment | src/pages/settings/index.vue:25-29 | 確定 | 直接更新 |
+
+### Article preview (`/ and feed pages`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Favorite article | click | onFavorited | user | R | isLoggedIn | property read | src/components/ArticlePreview.vue:11,14,45 | 確定 | - |
+
+### Profile/article detail (`/profile/:id; /article/:id`)
+
+| 操作 | トリガー種別 | ハンドラ | ストア | R/W | 対象 | 経路 | 場所 | 確度 | 違反候補 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Follow author | click | onFollow | user | R | isLoggedIn | property read | src/components/FollowButton.vue:9,14,32 | 確定 | - |
 
 ## 4. ストア別マトリクス
 
