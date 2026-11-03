@@ -1,0 +1,11 @@
+**RealWorld（Medium クローン）系 — 読みやすく、ストア設計の教材向き**
+
+- [https://github.com/gpingfeng/vue3-realworld-app](https://github.com/gpingfeng/vue3-realworld-app)
+
+**実運用規模の admin テンプレート — 多数のストアが絡み合う現場に近いサンプル**
+
+- [https://github.com/soybeanjs/soybean-admin](https://github.com/soybeanjs/soybean-admin)
+
+**テンプレートではない実プロダクト — ストア間の相互参照・初期化順序など泥臭い例**
+
+- [https://github.com/directus/directus（`app/src/stores/`）](https://github.com/directus/directus%EF%BC%88%60app/src/stores/%60%EF%BC%89)

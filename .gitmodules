@@ -1,0 +1,9 @@
+[submodule "vue3-realworld-app"]
+	path = vue3-realworld-app
+	url = https://github.com/gpingfeng/vue3-realworld-app.git
+[submodule "soybean-admin"]
+	path = soybean-admin
+	url = https://github.com/soybeanjs/soybean-admin.git
+[submodule "directus"]
+	path = directus
+	url = https://github.com/directus/directus.git
